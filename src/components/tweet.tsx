@@ -28,7 +28,7 @@ function Tweet() {
 
                 <div>
                     <div className="flex">
-                        <div className="text-sm font-bold pr-1">Abinash Ray Yadav</div>
+                        <div className="text-sm font-bold pr-1">Ayush Kaushik</div>
                         <div>
                             <Heart color="#ff0000" size={17} strokeWidth={3} />
                         </div>

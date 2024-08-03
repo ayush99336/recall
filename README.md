@@ -1,13 +1,6 @@
-<p align='center'> 
-  <img src="https://github.com/Abinash4567/recall/assets/98229006/e50a59f4-a85b-48d1-9d61-75d1f9f1509f" alt="logo">
-  <h3 align="center">recall</h3>
-  <h4 align="center">Remember your loved ones</h3>
-</p>
 
 
 <!-- ABOUT THE PROJECT -->
-## Glimpse
-<p align='center'> <img src="https://github.com/Abinash4567/recall/assets/98229006/1bc4c603-e097-4d54-afb8-57b4345ba7f8" alt="logo"></p>
 
 ## Overview
 This project aims to enhance cognitive function in individuals with Alzheimer's by using custom Twitter posts as memory prompts. It leverages a curated content feed to pin memories and serves as a gentle reminder of past events.
@@ -31,7 +24,7 @@ This project aims to enhance cognitive function in individuals with Alzheimer's 
 
 To run this project locally, follow these steps:
 
-1. Clone the repository: `git clone https://github.com/Abinash4567/recall`
+1. Clone the repository: `git clone https://github.com/ayush99336/recall`
 2. Install dependencies: `npm install`
 4. Set up pgAdmin or supabase database on your need
 5. Create a `.env` file like `.env.example`
