@@ -18,57 +18,38 @@ import { useDropzone } from 'react-dropzone';
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
-interface IUserData {
-    username: string;
-    handle: string;
-    tweet: string;
-}
-
-interface selFile {
+interface FilePreview {
     name: string;
     preview: string;
 }
 
 export default function Page() {
-    const { data: session, status: wait  } =  useSession();
-
+    const { data: session } = useSession();
     const { toast } = useToast();
+    
     const [status, setStatus] = useState<number>(1);
-    const [userdata, setUserData] = useState<IUserData>({
-        username: "",
-        handle: "",
-        tweet: ""
-    });
-
-    const [files, setFiles] = useState<selFile[]>([]);
-    const [avatarFile, setAvatarFile] = useState<any>();
-    const [imageFile, setImageFile] = useState<any>();
+    const [files, setFiles] = useState<FilePreview[]>([]);
+    const [avatarFile, setAvatarFile] = useState<File | null>(null);
+    const [imageFile, setImageFile] = useState<File | null>(null);
     const [loadState, setLoadState] = useState<number>(0);
 
 
-    const onDrop = useCallback((acceptedFiles: any[], rejectedFiles: any) => {
-        setFiles((previousFiles) => [
-            ...previousFiles,
-            ...acceptedFiles.map((file) => ({
-                ...file,
-                preview: URL.createObjectURL(file),
-                name: file.name,
-            })),
-        ]);
+    const onDrop = useCallback((acceptedFiles: File[]) => {
+        const newFiles = acceptedFiles.map((file) => ({
+            name: file.name,
+            preview: URL.createObjectURL(file),
+        }));
+        
+        setFiles((prev) => [...prev, ...newFiles]);
 
         if (status === 1) {
             setAvatarFile(acceptedFiles[0]);
             setStatus(2);
-            setTimeout(() => {
-                setStatus(3);
-            }, 2000);
-        }
-        else if (status === 3) {
+            setTimeout(() => setStatus(3), 2000);
+        } else if (status === 3) {
             setImageFile(acceptedFiles[0]);
             setStatus(4);
-            setTimeout(() => {
-                setStatus(5);
-            }, 2000);
+            setTimeout(() => setStatus(5), 2000);
         }
     }, [status]);
 
@@ -117,8 +98,8 @@ export default function Page() {
     });
 
 
-    async function uploadAsset(file: any) {
-        let formData = new FormData();
+    async function uploadAsset(file: File) {
+        const formData = new FormData();
         formData.append('file', file);
         formData.append('upload_preset', 'recall');
 
@@ -131,92 +112,50 @@ export default function Page() {
             if (response.ok) {
                 const data = await response.json();
                 return data.secure_url;
-                // console.log('Cloudinary response:', data);
-                // alert('File uploaded successfully: ' + data.secure_url);
             } else {
                 const errorData = await response.json();
-                return errorData.error.message;
-                // console.error('Error uploading file:', errorData);
-                // alert('Failed to upload file: ' + errorData.error.message);
+                throw new Error(errorData.error.message);
             }
-        }
-        catch (error) {
-            return error;
-            // console.error('Error uploading file:', error);
-            // alert('Failed to upload file');
+        } catch (error) {
+            throw error;
         }
     }
 
 
-    function isValidUrl(url: string): boolean {
-        const urlPattern = new RegExp(
-            '^(https?:\\/\\/)' +
-            '((([a-zA-Z0-9_-]+\\.)+[a-zA-Z]{2,})|' +
-            'localhost)' +
-            '(\\:\\d+)?' +
-            '(\\/[-a-zA-Z0-9@:%._\\+~#=]*)*' +
-            '(\\?[;&a-zA-Z0-9%_.~+=-]*)?' +
-            '(\\#[-a-zA-Z0-9_]*)?$'
-        );
-
-        return urlPattern.test(url);
-    }
-
-
-    async function checkUrl(url: string): Promise<{ valid: boolean; message: string }> {
-        if (!isValidUrl(url)) {
-            return { valid: false, message: "URL syntax is invalid." };
-        }
-
+    async function checkUrl(url: string): Promise<boolean> {
         if (!url.startsWith("https://")) {
-            return { valid: false, message: "URL is not using HTTPS." };
+            return false;
         }
 
         try {
             const response = await axios.get(url, { timeout: 5000 });
-            if (response.status !== 200) {
-                return {
-                    valid: false,
-                    message: `URL is not reachable, status code: ${response.status}`,
-                };
-            }
-        } catch (error: any) {
-            return {
-                valid: false,
-                message: `URL is not reachable, error: ${error.message}`,
-            };
+            return response.status === 200;
+        } catch (error) {
+            return false;
         }
-
-        return { valid: true, message: "URL is valid." };
     }
 
     async function onSubmit(data: z.infer<typeof FormSchema>) {
         setLoadState(10);
-        const avatarResponse = await uploadAsset(avatarFile);
-        const imageResponse = await uploadAsset(imageFile);
+        const avatarResponse = await uploadAsset(avatarFile!);
+        const imageResponse = await uploadAsset(imageFile!);
         setLoadState(20);
 
-        console.log(typeof avatarResponse);
-        console.log(typeof imageResponse);
-
         const response1 = await checkUrl(avatarResponse);
-        const resonse2 = await checkUrl(imageResponse);
+        const response2 = await checkUrl(imageResponse);
         setLoadState(70);
 
-
-        if (!response1.valid || !resonse2.valid) {
+        if (!response1 || !response2) {
             toast({
                 title: "Cannot Update your post.",
                 description: "Might be due to invalid file. Reloading!!",
             });
 
-            setTimeout(()=>{
+            setTimeout(() => {
                 window.location.reload()
-                }, 2000)
+            }, 2000)
 
-        } else 
-        {
-
+        } else {
             const response = await fetch("/api/upload", {
                 method: "POST",
                 body: JSON.stringify({
@@ -229,7 +168,7 @@ export default function Page() {
                     githubImage: session?.user?.image!,
                 }),
             });
-            // console.log(response);
+
             if (response.ok) {
                 setLoadState(98);
                 toast({
@@ -237,19 +176,18 @@ export default function Page() {
                     description: "Add more!!",
                 });
 
-                setTimeout(()=>{
+                setTimeout(() => {
                     window.location.reload()
-                    }, 2000)
-            } else 
-            {
+                }, 2000)
+            } else {
                 toast({
                     title: "Cannot Update your post.",
                     description: "Please try again. Refreshing!!",
                 });
-                
-                setTimeout(()=>{
+
+                setTimeout(() => {
                     window.location.reload()
-                    }, 2000)
+                }, 2000)
             }
         }
     }
@@ -273,10 +211,6 @@ export default function Page() {
                                                 placeholder="Enter Username"
                                                 type="text"
                                                 {...field}
-                                                onChange={(e) => {
-                                                    setUserData({ ...userdata, username: e.target.value });
-                                                    field.onChange(e);
-                                                }}
                                             />
                                         </FormControl>
                                         <FormMessage />
@@ -295,10 +229,6 @@ export default function Page() {
                                                 placeholder="Enter user handle"
                                                 type="text"
                                                 {...field}
-                                                onChange={(e) => {
-                                                    setUserData({ ...userdata, handle: e.target.value });
-                                                    field.onChange(e);
-                                                }}
                                             />
                                         </FormControl>
                                         <FormMessage />
@@ -317,10 +247,6 @@ export default function Page() {
                                                 placeholder="Write about memorable event."
                                                 className="resize-none"
                                                 {...field}
-                                                onChange={(e) => {
-                                                    setUserData({ ...userdata, tweet: e.target.value });
-                                                    field.onChange(e);
-                                                }}
                                             />
                                         </FormControl>
                                         <FormMessage />
@@ -356,7 +282,7 @@ export default function Page() {
                                     <div
                                         {...getRootProps({
                                             className:
-                                                "border-2 borer-red-500 rounded hover:bg-slate-800 bg-slate-900 hover:cursor-pointer h-[40px] w-[40px] pt-2"
+                                                "rounded hover:bg-slate-800 bg-slate-900 hover:cursor-pointer h-[40px] w-[40px] pt-2"
                                         })} >
                                         <input {...getInputProps({ name: "file" })} />
                                         <div className="flex flex-col items-center justify-center gap-4">
@@ -375,7 +301,11 @@ export default function Page() {
                 </div>
 
                 <div>
-                    <TweetLoading userData={userdata} files={files} />
+                    <TweetLoading userData={{
+                        username: form.watch("username") || "",
+                        handle: form.watch("handle") || "",
+                        tweet: form.watch("tweet") || ""
+                    }} files={files} />
                 </div>
             </div>
             <div className="mb-10 text-4xl font-extrabold leading-none tracking-tight md:text-5xl lg:text-6xl">
